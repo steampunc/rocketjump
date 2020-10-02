@@ -4,6 +4,7 @@ using UnityEngine;
 
 public class RocketShoot : MonoBehaviour
 {
+    public float rocketSpeed = 10f;
     public GameObject bombPrefab;
     // Start is called before the first frame update
     void Start()
@@ -15,8 +16,8 @@ public class RocketShoot : MonoBehaviour
     void Update()
     {
         if (Input.GetMouseButtonDown(0)) {
-            var newBomb = Instantiate(bombPrefab, transform.position + Vector3.up * 3, Quaternion.identity);
-            newBomb.AddForce(Vector3.down, ForceMode.Impulse);
+            var newBomb = Instantiate(bombPrefab, transform.position, Quaternion.identity);
+            newBomb.GetComponent<Rigidbody>().AddForce(Camera.main.transform.forward * rocketSpeed, ForceMode.Impulse);
             /*
             RaycastHit hit;
             int layerMask = 1 << 8;

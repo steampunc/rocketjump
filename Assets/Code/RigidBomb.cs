@@ -41,7 +41,7 @@ public class RigidBomb : MonoBehaviour
         foreach (Collider hit in colliders) {
             Rigidbody rb = hit.GetComponent<Rigidbody>();
             if (rb != null) {
-                rb.AddForce(CalculateExplosion(transform.position, rb.position), ForceMode.Impulse);
+                rb.AddForce(CalculateExplosion(transform.position, rb.position), ForceMode.VelocityChange);
                 Debug.Log(CalculateExplosion(transform.position, rb.position));
             }
         }
@@ -50,7 +50,9 @@ public class RigidBomb : MonoBehaviour
     }
 
     void OnCollisionEnter(Collision coll) {
-        willExplode = true;
+        if (coll.gameObject.tag != "Player") {
+            willExplode = true;
+        }
     }
 
     Vector3 CalculateExplosion(Vector3 origin, Vector3 target) {
