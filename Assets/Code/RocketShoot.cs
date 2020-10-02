@@ -15,7 +15,8 @@ public class RocketShoot : MonoBehaviour
     void Update()
     {
         if (Input.GetMouseButtonDown(0)) {
-            Instantiate(bombPrefab, transform.position, Quaternion.identity);
+            var newBomb = Instantiate(bombPrefab, transform.position + Vector3.up * 3, Quaternion.identity);
+            newBomb.AddForce(Vector3.down, ForceMode.Impulse);
             /*
             RaycastHit hit;
             int layerMask = 1 << 8;

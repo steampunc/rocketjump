@@ -9,6 +9,7 @@ public class RigidBomb : MonoBehaviour
     public float explosionRadius = 10.0f;
     
     public float upStrength = 0.5f;
+    bool willExplode = false;
     // Start is called before the first frame update
 
     float fuse_time = 4.0f; // seconds
@@ -24,6 +25,10 @@ public class RigidBomb : MonoBehaviour
             fuse_time -= Time.deltaTime;
             Debug.Log(fuse_time);
         } else {
+            willExplode = true;
+        }
+
+        if (willExplode) {
             Explode();
         }
     }
@@ -45,7 +50,7 @@ public class RigidBomb : MonoBehaviour
     }
 
     void OnCollisionEnter(Collision coll) {
-        Explode();
+        willExplode = true;
     }
 
     Vector3 CalculateExplosion(Vector3 origin, Vector3 target) {
