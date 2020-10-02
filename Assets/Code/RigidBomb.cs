@@ -6,7 +6,7 @@ public class RigidBomb : MonoBehaviour
 {
 
     public float explosionStrength = 0.5f;
-    public float explosionRadius = 5.0f;
+    public float explosionRadius = 10.0f;
     
     public float upStrength = 0.5f;
     // Start is called before the first frame update
@@ -42,6 +42,10 @@ public class RigidBomb : MonoBehaviour
         }
         Destroy(gameObject, exp.main.duration);
 
+    }
+
+    void OnCollisionEnter(Collision coll) {
+        Explode();
     }
 
     Vector3 CalculateExplosion(Vector3 origin, Vector3 target) {

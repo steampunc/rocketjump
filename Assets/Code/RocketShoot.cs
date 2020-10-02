@@ -4,6 +4,7 @@ using UnityEngine;
 
 public class RocketShoot : MonoBehaviour
 {
+    public GameObject bombPrefab;
     // Start is called before the first frame update
     void Start()
     {
@@ -14,6 +15,7 @@ public class RocketShoot : MonoBehaviour
     void Update()
     {
         if (Input.GetMouseButtonDown(0)) {
+            Instantiate(bombPrefab, transform.position, Quaternion.identity);
             /*
             RaycastHit hit;
             int layerMask = 1 << 8;
