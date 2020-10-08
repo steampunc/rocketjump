@@ -127,7 +127,7 @@ public class CharControl_2 : MonoBehaviour
     {
         lookRotation.y += Input.GetAxis("Mouse X") * lookSpeed;
         lookRotation.x += -Input.GetAxis("Mouse Y") * lookSpeed;
-        lookRotation.x = Mathf.Clamp(lookRotation.x, -75f, 75f);
+        lookRotation.x = Mathf.Clamp(lookRotation.x, -90f, 90f);
     }
 
 
@@ -215,9 +215,9 @@ public class CharControl_2 : MonoBehaviour
     private Vector3 Friction(Vector3 v_current)
     {
         //if moving very slowly, set velocity to 0
-        if (v_current.magnitude < stopspeed)
+        if (v_current.magnitude < stopspeed && v_current.magnitude != 0)
         {
-            Debug.Log("snapped");
+            Debug.Log("stopped");
             rb.velocity = Vector3.zero;
         }
 
@@ -267,7 +267,7 @@ public class CharControl_2 : MonoBehaviour
     {
         velocityDifference = v_desired - v_current;
         rb.AddForce(velocityDifference, ForceMode.VelocityChange);
-        Debug.Log("v: " + rb.velocity.magnitude + "   grd?: " + grounded);
+        //Debug.Log("v: " + rb.velocity.magnitude + "   grd?: " + grounded);
     }
 
     //player jumps
