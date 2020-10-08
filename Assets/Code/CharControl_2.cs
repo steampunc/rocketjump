@@ -217,7 +217,7 @@ public class CharControl_2 : MonoBehaviour
         //if moving very slowly, set velocity to 0
         if (v_current.magnitude < stopspeed && v_current.magnitude != 0)
         {
-            Debug.Log("stopped");
+            //Debug.Log("v: "+ v_current.magnitude + " stopped");
             rb.velocity = Vector3.zero;
         }
 
@@ -267,7 +267,7 @@ public class CharControl_2 : MonoBehaviour
     {
         velocityDifference = v_desired - v_current;
         rb.AddForce(velocityDifference, ForceMode.VelocityChange);
-        //Debug.Log("v: " + rb.velocity.magnitude + "   grd?: " + grounded);
+        Debug.Log("v: " + rb.velocity.magnitude + "   grd?: " + grounded);
     }
 
     //player jumps
@@ -289,7 +289,7 @@ public class CharControl_2 : MonoBehaviour
         if (Physics.BoxCast(bCollider.bounds.center, bCollider.bounds.extents, Vector3.down, out hit, Quaternion.identity, snapToGroundDistance))
         {
             rb.MovePosition(rb.position + Vector3.down * hit.distance);
-            Debug.Log("snapped");
+            //Debug.Log("d: " + hit.distance + " snapped");
         }
     }
 

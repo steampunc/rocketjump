@@ -1358,6 +1358,11 @@ PrefabInstance:
   m_Modification:
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 7142232448918396837, guid: 47ff4a6d61f0a9e429b74ff1bb6a1bdf,
+        type: 3}
+      propertyPath: m_CullingMask.m_Bits
+      value: 567
+      objectReference: {fileID: 0}
     - target: {fileID: 7142232449740078819, guid: 47ff4a6d61f0a9e429b74ff1bb6a1bdf,
         type: 3}
       propertyPath: m_Material
@@ -1367,17 +1372,17 @@ PrefabInstance:
     - target: {fileID: 7142232449740078820, guid: 47ff4a6d61f0a9e429b74ff1bb6a1bdf,
         type: 3}
       propertyPath: m_LocalPosition.x
-      value: 2.69
+      value: 0.76
       objectReference: {fileID: 0}
     - target: {fileID: 7142232449740078820, guid: 47ff4a6d61f0a9e429b74ff1bb6a1bdf,
         type: 3}
       propertyPath: m_LocalPosition.y
-      value: 1.45
+      value: 9.03
       objectReference: {fileID: 0}
     - target: {fileID: 7142232449740078820, guid: 47ff4a6d61f0a9e429b74ff1bb6a1bdf,
         type: 3}
       propertyPath: m_LocalPosition.z
-      value: 2.3179846
+      value: 11.16
       objectReference: {fileID: 0}
     - target: {fileID: 7142232449740078820, guid: 47ff4a6d61f0a9e429b74ff1bb6a1bdf,
         type: 3}

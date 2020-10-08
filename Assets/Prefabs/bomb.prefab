@@ -14,7 +14,7 @@ GameObject:
   - component: {fileID: 2029125575921726085}
   - component: {fileID: 2029125575921726081}
   - component: {fileID: 2029125575921726142}
-  m_Layer: 0
+  m_Layer: 9
   m_Name: bomb
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -123,7 +123,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e24ff0fa070b59f4bbcd6570f43c34d2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  explosionStrength: 8
+  explosionStrength: 10
   explosionRadius: 5
   upStrength: 2
   explosionParticle: {fileID: 3776845932864505502, guid: e8b6a11f43d5eef4eafc9f5c3d3a99dd,

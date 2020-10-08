@@ -6,19 +6,20 @@ public class RocketShoot : MonoBehaviour
 {
     public float rocketSpeed = 18f;
     public GameObject bombPrefab;
+    private Camera playerCam;
 
     // Start is called before the first frame update
     void Start()
     {
-        
+        playerCam = Camera.main;
     }
 
     // Update is called once per frame
     void Update()
     {
         if (Input.GetMouseButtonDown(0)) {
-            GameObject newBomb = Instantiate(bombPrefab, transform.position + Camera.main.transform.forward * 0.5f, Camera.main.transform.rotation);
-            Physics.IgnoreCollision(newBomb.GetComponent<Collider>(), GetComponent<Collider>());
+            GameObject newBomb = Instantiate(bombPrefab, playerCam.transform.position + Vector3.down * 0.2f + playerCam.transform.forward * 1f, playerCam.transform.rotation);
+            Physics.IgnoreCollision(newBomb.GetComponent<Collider>(), GetComponent<Collider>(), true);
             newBomb.GetComponent<Rigidbody>().AddRelativeForce(Vector3.forward * rocketSpeed, ForceMode.VelocityChange);
             /*
             RaycastHit hit;

@@ -17,7 +17,7 @@ public class RigidBomb : MonoBehaviour
 
     void Start()
     {
-        
+        GetComponent<Rigidbody>().interpolation = RigidbodyInterpolation.Interpolate;
     }
 
     // Update is called once per frame
@@ -63,7 +63,6 @@ public class RigidBomb : MonoBehaviour
         //float strength = explosionStrength * Mathf.Cos(displacement.magnitude/explosionRadius * Mathf.PI / 2);
         
         Debug.DrawRay(target, dir * explosionStrength + Vector3.up * upStrength, Color.white, 1f);
-        Debug.Log("bomb force: " + dir * explosionStrength + Vector3.up * upStrength);
         return dir * explosionStrength + Vector3.up * upStrength;
     }
 }
