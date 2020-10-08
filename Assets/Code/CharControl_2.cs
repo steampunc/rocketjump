@@ -127,7 +127,7 @@ public class CharControl_2 : MonoBehaviour
     {
         lookRotation.y += Input.GetAxis("Mouse X") * lookSpeed;
         lookRotation.x += -Input.GetAxis("Mouse Y") * lookSpeed;
-        lookRotation.x = Mathf.Clamp(lookRotation.x, -60f, 60f);
+        lookRotation.x = Mathf.Clamp(lookRotation.x, -75f, 75f);
     }
 
 
@@ -166,20 +166,23 @@ public class CharControl_2 : MonoBehaviour
             return;
         }
         
-        RaycastHit hit;
+        
         //ground detection box slightly narrower than player collider so player can't jump perfectly straight up to get on a ledge
         Vector3 boxCastExtents = new Vector3(bCollider.bounds.extents.x - 0.001f, groundedDistance, bCollider.bounds.extents.z - 0.001f);
-
+        RaycastHit hit;
+        RaycastHit hit2;
         //casts a box downward to detect ground
-        if (Physics.BoxCast(bCollider.bounds.center, boxCastExtents, Vector3.down, out hit, Quaternion.identity, bCollider.bounds.extents.y))
+        if (Physics.BoxCast(bCollider.bounds.center, boxCastExtents, Vector3.down, out hit, Quaternion.identity, bCollider.bounds.extents.y) && 
+            hit.collider.Raycast(new Ray(hit.point + Vector3.up, Vector3.down), out hit2, 1.1f))
         {
             //Debug.DrawRay(hit.point, hit.normal * 10f, Color.yellow, 0.1f);
+            Debug.DrawRay(hit2.point, hit2.normal * 10f, Color.blue, 0.1f);
 
-            if (hit.normal == Vector3.up) //if on flat surface
+            if (hit2.normal == Vector3.up) //if on flat surface
             {
                 //checks if contact point is near feet of player
                 float playerBottom = bCollider.bounds.center.y - bCollider.bounds.extents.y;
-                if (hit.point.y - 0.003f <= playerBottom)
+                if (hit2.point.y - 0.003f <= playerBottom)
                 {
                     grounded = true;
                 }
@@ -187,10 +190,10 @@ public class CharControl_2 : MonoBehaviour
             else //if on a ramp
             {
                 //projection of hit.normal onto xz plane
-                Vector3 planeProjection = Vector3.ProjectOnPlane(hit.normal, Vector3.up);
+                Vector3 planeProjection = Vector3.ProjectOnPlane(hit2.normal, Vector3.up);
                 
                 //if angle between normal of ramp and xz plane not too steep, grounded = true
-                float angle = Vector3.Angle(planeProjection, hit.normal);
+                float angle = Vector3.Angle(planeProjection, hit2.normal);
                 if (angle > 90 - walkUpRampAngle - 0.5f)
                 {
                     grounded = true;
@@ -214,6 +217,7 @@ public class CharControl_2 : MonoBehaviour
         //if moving very slowly, set velocity to 0
         if (v_current.magnitude < stopspeed)
         {
+            Debug.Log("snapped");
             rb.velocity = Vector3.zero;
         }
 

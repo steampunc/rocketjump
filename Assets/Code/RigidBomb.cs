@@ -13,6 +13,7 @@ public class RigidBomb : MonoBehaviour
     // Start is called before the first frame update
 
     float fuse_time = 4.0f; // seconds
+
     void Start()
     {
         
