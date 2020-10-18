@@ -1363,6 +1363,11 @@ PrefabInstance:
       propertyPath: m_CullingMask.m_Bits
       value: 567
       objectReference: {fileID: 0}
+    - target: {fileID: 7142232449740078816, guid: 47ff4a6d61f0a9e429b74ff1bb6a1bdf,
+        type: 3}
+      propertyPath: m_CollisionDetection
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 7142232449740078819, guid: 47ff4a6d61f0a9e429b74ff1bb6a1bdf,
         type: 3}
       propertyPath: m_Material

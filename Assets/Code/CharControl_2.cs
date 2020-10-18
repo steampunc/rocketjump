@@ -13,8 +13,8 @@ public class CharControl_2 : MonoBehaviour
     private const float groundFriction = 10f;
     private const float stopspeed = 0.1f; //if moving on ground and v < stopspeed, velocity becomes 0
     private const float jumpHeight = 1.1f;
-    private const float walkUpRampAngle = 30f; //max angle in degrees player can walk up
-    private const float snapToGroundDistance = 0.1f; //snaps to ground if player < snapToGroundDistance away
+    private const float walkUpRampAngle = 35f; //max angle in degrees player can walk up
+    //private const float snapToGroundDistance = 0.1f; //snaps to ground if player < snapToGroundDistance away
     private const float groundedDistance = 0.1f; //if distance to ground < groundedDistance, player considered grounded
     private const float comeOffGroundSpeed = 4f; //vertical speed needed to become airborne
 
@@ -30,7 +30,10 @@ public class CharControl_2 : MonoBehaviour
     private Camera playerCam;
 
     private bool grounded;
-    private bool justJumped;
+    private Vector3 groundNormal;
+
+    private bool jumpPressed;
+
 
     // Start is called before the first frame update
     void Start()
@@ -49,7 +52,8 @@ public class CharControl_2 : MonoBehaviour
         playerCam = Camera.main;
 
         grounded = false;
-        justJumped = false;
+        groundNormal = Vector3.zero;
+        jumpPressed = false;
 
         //set gravity to -20 units/s^2
         Physics.gravity = new Vector3(0, -20f, 0);
@@ -62,11 +66,13 @@ public class CharControl_2 : MonoBehaviour
 
         //movement input
         UpdateMovementInput();
-        
-        //jump
-        if (grounded && Input.GetButtonDown("Jump"))
+        if (!jumpPressed && grounded)
         {
-            Jump();
+            //jump
+            if (Input.GetButtonDown("Jump"))
+            {
+                jumpPressed = true;
+            }
         }
         
         //clicking on screen locks mouse to center, esc stops
@@ -90,37 +96,30 @@ public class CharControl_2 : MonoBehaviour
     //Called every time physics updates
     private void FixedUpdate()
     {
-        CheckGrounded();
-
-        if (grounded)
+        if (jumpPressed) //wait a little after jumping
         {
-            rb.useGravity = false;
-        }
-        else
-        {
-            rb.useGravity = true;
-        }
-
-        if (justJumped) //wait a little after jumping
-        {
-            justJumped = false;
+            Jump();
+            jumpPressed = false;
+            //Debug.Log("done jumping");
             return;
         }
+
+        CheckGrounded(bCollider.bounds.center);
 
         Vector3 v_current = rb.velocity; //current velocity
         Vector3 v_current_2D = Velocity2D(); //current velocity along xz plane
 
         if (grounded)
         {
-            MoveGround(v_current);
-            StickToSurface(); //allows player to move on/off ramps smoothly
+            rb.useGravity = false;
+            WalkMove(v_current);
         }
         else
         {
+            rb.useGravity = true;
             friction = Vector3.zero;
-            MoveAir(v_current_2D);
+            AirMove(v_current_2D);
         }
-        
     }
 
     private void UpdateLookDirection()
@@ -129,7 +128,6 @@ public class CharControl_2 : MonoBehaviour
         lookRotation.x += -Input.GetAxis("Mouse Y") * lookSpeed;
         lookRotation.x = Mathf.Clamp(lookRotation.x, -90f, 90f);
     }
-
 
     //first person view
     private void UpdateFirstPersonView()
@@ -140,76 +138,54 @@ public class CharControl_2 : MonoBehaviour
     //updates desired movement input
     private void UpdateMovementInput()
     {
-        Vector2 axisInput = new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
-        axisInput = Vector2.ClampMagnitude(axisInput, 1);
+        Vector3 axisInput = new Vector3(Input.GetAxisRaw("Horizontal"), 0, Input.GetAxisRaw("Vertical"));
+        axisInput = Vector3.ClampMagnitude(axisInput, 1);
 
-        float rot = (360 - playerCam.transform.eulerAngles.y) * Mathf.Deg2Rad;
-        axisInput = RotateVector2(axisInput, rot);
+        float degreeRotation = playerCam.transform.eulerAngles.y - 360;
+        axisInput = Quaternion.Euler(0, degreeRotation, 0) * axisInput;
 
-        moveInputDirection = new Vector3(axisInput.x, 0, axisInput.y);
+        moveInputDirection = axisInput;
     }
 
     private void DrawDebugLines()
     {
         Debug.DrawRay(transform.position, rb.velocity, Color.green); //draw velocity vector
-        Debug.DrawRay(transform.position, moveInputDirection * 10, Color.blue); //draw moveInput vector
-        Debug.DrawRay(transform.position, friction * 5, Color.red); //draw friction vector
+        //Debug.DrawRay(transform.position, moveInputDirection * 10, Color.blue); //draw moveInput vector
+        //Debug.DrawRay(transform.position, friction * 5, Color.red); //draw friction vector
     }
 
-    //checks if player is on a walkeable surface
-    private void CheckGrounded()
+
+    //movement when grounded
+    private void WalkMove(Vector3 v_current)
     {
-        //if moving up rapidly, not on ground
-        if (rb.velocity.y > comeOffGroundSpeed)
+        Vector3 movement = moveInputDirection * runAcceleration * Time.fixedDeltaTime; //movement acceleration = direction * acceleration scaled for time
+
+        Vector3 v_desired = v_current + movement + Friction(v_current); //desired velocity = current velocity + movement acceleration + friction
+
+        if (v_desired.magnitude > maxRunSpeed) //can't exceed max run speed
         {
-            grounded = false;
-            return;
+            v_desired = Vector3.ClampMagnitude(v_desired, maxRunSpeed);
         }
         
-        
-        //ground detection box slightly narrower than player collider so player can't jump perfectly straight up to get on a ledge
-        Vector3 boxCastExtents = new Vector3(bCollider.bounds.extents.x - 0.001f, groundedDistance, bCollider.bounds.extents.z - 0.001f);
-        RaycastHit hit;
-        RaycastHit hit2;
-        //casts a box downward to detect ground
-        if (Physics.BoxCast(bCollider.bounds.center, boxCastExtents, Vector3.down, out hit, Quaternion.identity, bCollider.bounds.extents.y) && 
-            hit.collider.Raycast(new Ray(hit.point + Vector3.up, Vector3.down), out hit2, 1.1f))
-        {
-            //Debug.DrawRay(hit.point, hit.normal * 10f, Color.yellow, 0.1f);
-            Debug.DrawRay(hit2.point, hit2.normal * 10f, Color.blue, 0.1f);
+        //make movement direction parallel to surface player is standing on
+        Vector3 v_desired_parallel = Vector3.ProjectOnPlane(v_desired, groundNormal).normalized * v_desired.magnitude;
+        Debug.DrawRay(rb.position, groundNormal * 5, Color.red);
 
-            if (hit2.normal == Vector3.up) //if on flat surface
-            {
-                //checks if contact point is near feet of player
-                float playerBottom = bCollider.bounds.center.y - bCollider.bounds.extents.y;
-                if (hit2.point.y - 0.003f <= playerBottom)
-                {
-                    grounded = true;
-                }
-            }
-            else //if on a ramp
-            {
-                //projection of hit.normal onto xz plane
-                Vector3 planeProjection = Vector3.ProjectOnPlane(hit2.normal, Vector3.up);
-                
-                //if angle between normal of ramp and xz plane not too steep, grounded = true
-                float angle = Vector3.Angle(planeProjection, hit2.normal);
-                if (angle > 90 - walkUpRampAngle - 0.5f)
-                {
-                    grounded = true;
-                }
-                else
-                {
-                    grounded = false;
-                }
-            }
+        Vector3 futurePosition = rb.position + v_desired_parallel * Time.fixedDeltaTime;
+        Vector3 futureGroundNormal = CheckComingOffGround(futurePosition);
+        //if moving onto a differently-sloped surface, change movement direction
+        if (futureGroundNormal != Vector3.zero)
+        {
+            v_desired = Vector3.ProjectOnPlane(v_desired, futureGroundNormal).normalized * v_desired.magnitude;
         }
         else
         {
-            //Debug.Log("boxcast miss");
-            grounded = false;
+            v_desired = v_desired_parallel;
         }
+
+        Move(v_current, v_desired);
     }
+
 
     //returns friction vector given current velocity
     private Vector3 Friction(Vector3 v_current)
@@ -230,36 +206,21 @@ public class CharControl_2 : MonoBehaviour
     }
 
 
-    //movement when grounded
-    private void MoveGround(Vector3 v_current)
-    {
-        Vector3 movement = moveInputDirection * runAcceleration * Time.fixedDeltaTime; //movement acceleration = direction * acceleration scaled for time
-
-        Vector3 v_desired = v_current + movement + Friction(v_current); //desired velocity = current velocity + movement acceleration + friction
-
-        if (v_desired.magnitude > maxRunSpeed) //can't exceed max run speed
-        {
-            v_desired = Vector3.ClampMagnitude(v_desired, maxRunSpeed);
-        }
-
-        Move(v_current, v_desired);
-    }
-
     //movement when in the air
-    private void MoveAir(Vector3 v_current_2D)
+    private void AirMove(Vector3 v_current_2D)
     {
-        Vector3 v_desired = v_current_2D + moveInputDirection * airAcceleration * Time.fixedDeltaTime;
+        Vector3 v_desired_2D = v_current_2D + moveInputDirection * airAcceleration * Time.fixedDeltaTime;
 
-        if (v_desired.magnitude > maxAirSpeed)
+        if (v_desired_2D.magnitude > maxAirSpeed)
         {
             if (Vector3.Dot(v_current_2D, moveInputDirection) > 0)
             {
                 return;
             }
-            v_desired = Vector3.ClampMagnitude(v_desired, Mathf.Max(maxAirSpeed, v_current_2D.magnitude));
+            v_desired_2D = Vector3.ClampMagnitude(v_desired_2D, Mathf.Max(maxAirSpeed, v_current_2D.magnitude));
         }
 
-        Move(v_current_2D, v_desired);
+        Move(v_current_2D, v_desired_2D);
     }
     
     //applies velocity changes given current and desired velocity
@@ -267,41 +228,143 @@ public class CharControl_2 : MonoBehaviour
     {
         velocityDifference = v_desired - v_current;
         rb.AddForce(velocityDifference, ForceMode.VelocityChange);
+        //Debug.DrawRay(rb.position, v_desired * 10, Color.magenta);
         Debug.Log("v: " + rb.velocity.magnitude + "   grd?: " + grounded);
     }
 
     //player jumps
     private void Jump()
     {
-        //Debug.Log("jumping");
-        float jump_v_change = Mathf.Sqrt(-2.1f * Physics.gravity.y * jumpHeight) - Mathf.Clamp(rb.velocity.y, 0, 3f); //calculates velocity change needed to reach a designated jump height
-        rb.AddForce(Vector3.up * jump_v_change, ForceMode.VelocityChange);
+        Debug.Log("jumping");
+        Vector3 v_current = rb.velocity;
+        
+        //make current movement parallel to xz plane
+        Vector3 v_current_parallel = Vector3.ProjectOnPlane(v_current, Vector3.up).normalized * v_current.magnitude;
+
+        float jump_v_change = Mathf.Sqrt(-2.1f * Physics.gravity.y * jumpHeight);// - Mathf.Clamp(rb.velocity.y, 0, 3f); //calculates velocity change needed to reach a designated jump height
+        Vector3 v_desired = v_current_parallel + Vector3.up * jump_v_change;
+
         rb.useGravity = true;
         grounded = false;
-        justJumped = true;
+
+        Move(v_current, v_desired);
+    }
+
+
+    //checks if player is on a walkeable surface
+    private void CheckGrounded(Vector3 playerCenterPosition)
+    {
+        bool wasGrounded = grounded;
+
+        //if moving up rapidly, not on ground
+        if (rb.velocity.y > comeOffGroundSpeed)
+        {
+            grounded = false;
+            return;
+        }
+
+        RaycastHit? hitNullable = TraceBoundingBoxToGround(playerCenterPosition, groundedDistance);
+        if (!hitNullable.HasValue)
+        {
+            grounded = false;
+            groundNormal = Vector3.zero;
+            return;
+        }
+        else
+        {
+            RaycastHit hit = hitNullable.Value;
+            grounded = true;
+            float distanceToGround = BottomOfPlayerY() - hit.point.y;
+            groundNormal = hit.normal;
+            Debug.DrawRay(hit.point, hit.normal * 10f, Color.yellow, 0.1f);
+            if (!wasGrounded)
+            {
+                //SnapToGround(distanceToGround);
+                rb.velocity = new Vector3(rb.velocity.x, 0, rb.velocity.z);
+            }
+        }
+    }
+    
+    // returns:
+    // Vector3.zero if staying on ground or  if completely coming off (falling off a cliff or something)
+    // normal of hit if leaving ground but close enough to snap down (moving down onto a ramp)
+    private Vector3 CheckComingOffGround(Vector3 centerPosition)
+    {
+        RaycastHit? hitNullable = TraceBoundingBoxToGround(centerPosition, groundedDistance * 2);
+        if (!hitNullable.HasValue)
+        {
+            return Vector3.zero;
+        }
+
+        RaycastHit hit = hitNullable.Value;
+        float distance = centerPosition.y - bCollider.bounds.extents.y - hit.point.y;
+        
+        if (distance <= groundedDistance)
+        {
+            return Vector3.zero;
+        }
+        else
+        {
+            return hit.normal;
+        }
+    }
+
+    //traces bounding box down to a max distance of groundedDistance below the feet of the player
+    private RaycastHit? TraceBoundingBoxToGround(Vector3 playerCenterPosition, float distanceDown)
+    {
+        //ground detection box slightly narrower than player collider so player can't jump perfectly straight up to get on a ledge, only 2 * distanceFromFeet tall
+        //Vector3 boxCastExtents = new Vector3(bCollider.bounds.extents.x - 0.001f, distanceDown, bCollider.bounds.extents.z - 0.001f);
+        Vector3 boxCastExtents = new Vector3(bCollider.bounds.extents.x, distanceDown, bCollider.bounds.extents.z);
+        RaycastHit hit;
+        RaycastHit hit2;
+
+        //casts a box downward to detect ground, then raycasts down to double-check/work around bugs
+        if (Physics.BoxCast(playerCenterPosition, boxCastExtents, Vector3.down, out hit, Quaternion.identity, bCollider.bounds.extents.y) &&
+            hit.collider.Raycast(new Ray(hit.point + Vector3.up, Vector3.down), out hit2, 1 + distanceDown))
+        {
+            if (hit2.normal == Vector3.up) //if on flat surface
+            {
+                //checks if contact point is near feet of player
+                float playerBottom = playerCenterPosition.y - bCollider.bounds.extents.y;
+                if (hit2.point.y - 0.003f > playerBottom)
+                {
+                    return null;
+                }
+            }
+            else //if on a ramp
+            {
+                //projection of hit.normal onto xz plane
+                Vector3 planeProjection = Vector3.ProjectOnPlane(hit2.normal, Vector3.up);
+
+                //if angle between normal of ramp and xz plane too steep, grounded = false
+                float angle = Vector3.Angle(planeProjection, hit2.normal);
+                if (angle <= 90 - walkUpRampAngle - 0.5f)
+                {
+                    return null;
+                }
+            }
+            return hit2;
+        }
+
+        //Debug.Log("boxcast miss");
+        return null;
     }
 
     
     //snaps player to the ground when walking
-    private void StickToSurface()
+    private void SnapToGround(float distanceDown)
     {
-        RaycastHit hit;
-        if (Physics.BoxCast(bCollider.bounds.center, bCollider.bounds.extents, Vector3.down, out hit, Quaternion.identity, snapToGroundDistance))
-        {
-            rb.MovePosition(rb.position + Vector3.down * hit.distance);
-            //Debug.Log("d: " + hit.distance + " snapped");
-        }
+        Vector3 initialPosition = rb.position;
+        rb.MovePosition(rb.position + Vector3.down * distanceDown);
+        //Debug.Log("initial y: " + initialPosition.y + "should be moved down by d: " + distanceToGround);
+        Debug.Log("snapped");
     }
 
+    private float BottomOfPlayerY()
+    {
+        return bCollider.bounds.center.y - bCollider.bounds.extents.y;
+    }
     
-    //rotates Vector2 to align movement input with direction player is facing
-    public Vector2 RotateVector2(Vector2 v, float degrees)
-    {
-        float newX = v.x * Mathf.Cos(degrees) - v.y * Mathf.Sin(degrees);
-        float newY = v.y * Mathf.Cos(degrees) + v.x * Mathf.Sin(degrees);
-        return new Vector2(newX, newY);
-    }
-
     //returns velocity along the xz plane
     public Vector3 Velocity2D()
     {
@@ -310,9 +373,7 @@ public class CharControl_2 : MonoBehaviour
 
 
 
-
-
-
+    
     //
     //OLD FUNCTIONS NOT IN USE
     //

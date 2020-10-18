@@ -19,7 +19,7 @@ public class RocketShoot : MonoBehaviour
     {
         if (Input.GetMouseButtonDown(0)) {
             GameObject newBomb = Instantiate(bombPrefab, playerCam.transform.position + Vector3.down * 0.2f + playerCam.transform.forward * 1f, playerCam.transform.rotation);
-            Physics.IgnoreCollision(newBomb.GetComponent<Collider>(), GetComponent<Collider>(), true);
+            Physics.IgnoreCollision(newBomb.GetComponent<Collider>(), GetComponent<Collider>());
             newBomb.GetComponent<Rigidbody>().AddRelativeForce(Vector3.forward * rocketSpeed, ForceMode.VelocityChange);
             /*
             RaycastHit hit;

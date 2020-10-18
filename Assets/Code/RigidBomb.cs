@@ -4,20 +4,24 @@ using UnityEngine;
 
 public class RigidBomb : MonoBehaviour
 {
-
     public float explosionStrength = 1f;
     public float explosionRadius = 1f;
-    
     public float upStrength = 1f;
-    bool willExplode = false;
-    // Start is called before the first frame update
+    public float fuse_time = 4.0f; // seconds
 
-    float fuse_time = 4.0f; // seconds
+    private float minSpeed = 10f;
+
     public GameObject explosionParticle;
 
+    private Rigidbody rb;
+
+    private bool willExplode = false;
+
+    // Start is called before the first frame update
     void Start()
     {
-        GetComponent<Rigidbody>().interpolation = RigidbodyInterpolation.Interpolate;
+        rb = GetComponent<Rigidbody>();
+        rb.interpolation = RigidbodyInterpolation.Interpolate;
     }
 
     // Update is called once per frame
@@ -28,6 +32,12 @@ public class RigidBomb : MonoBehaviour
             //Debug.Log(fuse_time);
         } else {
             willExplode = true;
+        }
+
+        //if moving too slow, speeds up to minSpeed
+        if (rb.velocity.magnitude < minSpeed)
+        {
+            rb.velocity = rb.velocity.normalized * minSpeed;
         }
 
         if (willExplode) {
