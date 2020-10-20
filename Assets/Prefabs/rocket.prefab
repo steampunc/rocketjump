@@ -15,7 +15,7 @@ GameObject:
   - component: {fileID: 2029125575921726081}
   - component: {fileID: 2029125575921726142}
   m_Layer: 2
-  m_Name: bomb
+  m_Name: rocket
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -30,7 +30,7 @@ Transform:
   m_GameObject: {fileID: 2029125575921726084}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: -0.483, y: 0.70000005, z: 2.3179846}
-  m_LocalScale: {x: 0.5, y: 0.5, z: 0.5}
+  m_LocalScale: {x: 0.5, y: 0.5, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 0
@@ -123,9 +123,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e24ff0fa070b59f4bbcd6570f43c34d2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  explosionStrength: 10
-  explosionRadius: 5
-  upStrength: 2
+  explosionStrength: 16
+  explosionRadius: 4
+  upStrength: 4
   fuse_time: 4
+  rocketSpeed: 21
   explosionParticle: {fileID: 3776845932864505502, guid: e8b6a11f43d5eef4eafc9f5c3d3a99dd,
+    type: 3}
+  explosionSound: {fileID: 7000406938639922131, guid: bb80cf4b9e60fb14db526185ec60e88e,
     type: 3}

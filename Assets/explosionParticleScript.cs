@@ -11,10 +11,4 @@ public class explosionParticleScript : MonoBehaviour
         exp.Play();
         Destroy(gameObject, exp.main.duration);
     }
-    
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
 }

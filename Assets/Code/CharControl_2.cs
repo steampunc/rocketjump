@@ -7,7 +7,7 @@ public class CharControl_2 : MonoBehaviour
 
     private const float lookSpeed = 2f; //view sensitivity
     private const float runAcceleration = 100f; //acceleration when running on ground
-    private const float airAcceleration = 20f; //acceleration in air
+    private const float airAcceleration = 40f; //acceleration in air
     private const float maxRunSpeed = 8f;
     private const float maxAirSpeed = 3f;
     private const float groundFriction = 10f;
@@ -213,7 +213,7 @@ public class CharControl_2 : MonoBehaviour
 
         if (v_desired_2D.magnitude > maxAirSpeed)
         {
-            if (Vector3.Dot(v_current_2D, moveInputDirection) > 0)
+            if (Vector3.Dot(v_current_2D, moveInputDirection) >= 0)
             {
                 return;
             }

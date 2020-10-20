@@ -8,52 +8,70 @@ public class RigidBomb : MonoBehaviour
     public float explosionRadius = 1f;
     public float upStrength = 1f;
     public float fuse_time = 4.0f; // seconds
-
-    private float minSpeed = 10f;
+    public float rocketSpeed = 18f;
 
     public GameObject explosionParticle;
+    public GameObject explosionSound;
 
     private Rigidbody rb;
+    private AudioSource audioSource;
 
-    private bool willExplode = false;
+    //private bool willExplode = false;
 
     // Start is called before the first frame update
     void Start()
     {
         rb = GetComponent<Rigidbody>();
         rb.interpolation = RigidbodyInterpolation.Interpolate;
+        rb.AddRelativeForce(Vector3.forward * rocketSpeed, ForceMode.VelocityChange);
     }
 
     // Update is called once per frame
     void Update()
     {
-        if (fuse_time > 0) {
-            fuse_time -= Time.deltaTime;
+
+    }
+
+    //put bomb stuff in here so it's not linked to framerate
+    private void FixedUpdate()
+    {
+        if (fuse_time > 0)
+        {
+            fuse_time -= Time.fixedDeltaTime;
             //Debug.Log(fuse_time);
-        } else {
-            willExplode = true;
+        }
+
+        if (fuse_time <= 0)
+        {
+            Explode();
         }
 
         //if moving too slow, speeds up to minSpeed
-        if (rb.velocity.magnitude < minSpeed)
+        if (rb.velocity.magnitude != rocketSpeed)
         {
-            rb.velocity = rb.velocity.normalized * minSpeed;
+            rb.velocity = rb.velocity.normalized * rocketSpeed;
         }
 
-        if (willExplode) {
-            Explode();
+        //always point in direction of movement
+        Vector3 v_direction = rb.velocity.normalized;
+        if (rb.velocity.magnitude != 0 && transform.forward != v_direction)
+        {
+            transform.forward = v_direction;
         }
     }
 
     void Explode() {
         //made explosion particles separate from bomb object
         Instantiate(explosionParticle, transform.position, transform.rotation);
+        Instantiate(explosionSound, transform.position, transform.rotation);
         
         Collider[] colliders = Physics.OverlapSphere(transform.position, explosionRadius);
         foreach (Collider hit in colliders) {
             Rigidbody rb = hit.GetComponent<Rigidbody>();
             if (rb != null && rb.gameObject != gameObject) {
-                rb.AddForce(CalculateExplosion(transform.position, rb.position), ForceMode.VelocityChange);
+                Vector3 explosionForce = CalculateExplosion(transform.position, rb.position);
+                rb.AddForce(explosionForce, ForceMode.VelocityChange);
+                Debug.DrawRay(rb.position, (explosionForce + rb.velocity) * 0.5f, Color.white, 1f);
             }
         }
         //destroys instantly, rather than waiting for particles to finish playing
@@ -63,16 +81,16 @@ public class RigidBomb : MonoBehaviour
 
     void OnCollisionEnter(Collision coll) {
         if (coll.gameObject.tag != "Player") {
-            willExplode = true;
+            Explode();
         }
     }
 
     Vector3 CalculateExplosion(Vector3 origin, Vector3 target) {
         Vector3 displacement = (target - origin);
         Vector3 dir = (displacement).normalized;
-        //float strength = explosionStrength * Mathf.Cos(displacement.magnitude/explosionRadius * Mathf.PI / 2);
+        float strength = Mathf.Abs(explosionStrength * Mathf.Cos(displacement.magnitude/explosionRadius * Mathf.PI / 2));
+        //float strength = explosionStrength;
         
-        Debug.DrawRay(target, dir * explosionStrength + Vector3.up * upStrength, Color.white, 1f);
-        return dir * explosionStrength + Vector3.up * upStrength;
+        return dir * strength + Vector3.up * upStrength;
     }
 }
