@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 7142232448918396835}
   - component: {fileID: 7142232448918396837}
   - component: {fileID: 7142232448918396836}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Main Camera
   m_TagString: MainCamera
   m_Icon: {fileID: 0}
@@ -99,6 +99,7 @@ GameObject:
   - component: {fileID: 7142232449740078830}
   - component: {fileID: 7142232449740078831}
   - component: {fileID: 3542192567573897093}
+  - component: {fileID: 367465852}
   m_Layer: 8
   m_Name: Player_box
   m_TagString: Player
@@ -209,7 +210,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d38b72d0de9130d43b68d1c6473afad4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  bombPrefab: {fileID: 2029125575921726084, guid: abf4a3a18b7d6b54291b792e249a1866,
+  bombPrefab: {fileID: 4269224624702245428, guid: 0ab2cd5cf9a0c4b4b991b6f04524b2db,
     type: 3}
   shootCooldown: 0.8
 --- !u!114 &7142232449740078831
@@ -236,7 +237,7 @@ AudioSource:
   OutputAudioMixerGroup: {fileID: 0}
   m_audioClip: {fileID: 8300000, guid: 1ce7045a4e575ac49ac589aec1b6f576, type: 3}
   m_PlayOnAwake: 0
-  m_Volume: 0
+  m_Volume: 0.2
   m_Pitch: 1
   Loop: 0
   Mute: 0
@@ -320,3 +321,15 @@ AudioSource:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
+--- !u!114 &367465852
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7142232449740078829}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 79d53bb67ba164542a314d6373a59c6b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 

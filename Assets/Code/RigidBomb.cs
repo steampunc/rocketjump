@@ -4,17 +4,19 @@ using UnityEngine;
 
 public class RigidBomb : MonoBehaviour
 {
-    public float explosionStrength = 1f;
-    public float explosionRadius = 1f;
-    public float upStrength = 1f;
+    public float explosionStrength = 16f;
+    public float explosionRadius = 4f;
+    public float upStrength = 4f;
     public float fuse_time = 4.0f; // seconds
-    public float rocketSpeed = 18f;
+    public float rocketSpeed = 21f;
 
     public GameObject explosionParticle;
     public GameObject explosionSound;
 
     private Rigidbody rb;
     private AudioSource audioSource;
+
+    private bool exploding;
 
     //private bool willExplode = false;
 
@@ -24,6 +26,8 @@ public class RigidBomb : MonoBehaviour
         rb = GetComponent<Rigidbody>();
         rb.interpolation = RigidbodyInterpolation.Interpolate;
         rb.AddRelativeForce(Vector3.forward * rocketSpeed, ForceMode.VelocityChange);
+
+        exploding = false;
     }
 
     // Update is called once per frame
@@ -72,16 +76,20 @@ public class RigidBomb : MonoBehaviour
                 Vector3 explosionForce = CalculateExplosion(transform.position, rb.position);
                 rb.AddForce(explosionForce, ForceMode.VelocityChange);
                 Debug.DrawRay(rb.position, (explosionForce + rb.velocity) * 0.5f, Color.white, 1f);
+                //Debug.Log(explosionForce);
             }
         }
         //destroys instantly, rather than waiting for particles to finish playing
-        //Debug.Log("destroying");
         Destroy(gameObject);
     }
 
     void OnCollisionEnter(Collision coll) {
         if (coll.gameObject.tag != "Player") {
-            Explode();
+            if (exploding == false)
+            {
+                exploding = true;
+                Explode();
+            }
         }
     }
 
@@ -90,7 +98,8 @@ public class RigidBomb : MonoBehaviour
         Vector3 dir = (displacement).normalized;
         float strength = Mathf.Abs(explosionStrength * Mathf.Cos(displacement.magnitude/explosionRadius * Mathf.PI / 2));
         //float strength = explosionStrength;
-        
-        return dir * strength + Vector3.up * upStrength;
+
+        //return dir * strength + Vector3.up * upStrength;
+        return strength * (dir + Vector3.up * upStrength);
     }
 }
