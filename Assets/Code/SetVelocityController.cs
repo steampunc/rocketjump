@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class ControlCubeController : MonoBehaviour
+public class SetVelocityController : MonoBehaviour
 {
     private const float runAcceleration = 100f; //acceleration when running on ground
     private const float airAcceleration = 10f; //acceleration in air
@@ -12,8 +12,9 @@ public class ControlCubeController : MonoBehaviour
     private const float stopspeed = 0.1f; //if moving on ground and v < stopspeed, velocity becomes 0
     private const float jumpHeight = 1.1f;
     private const float walkOnSlopeNormal = 0.7f; //if y-value of surface normal >= 0.7f player can walk on it
-    private const float groundedDistance = 0.01f; //if distance to ground < groundedDistance, player considered grounded
     private const float comeOffGroundSpeed = 4f; //vertical speed needed to become airborne
+    private const float groundedDistance = 0.01f; //if distance to ground < groundedDistance, player considered grounded
+    private const float stepSize = 0.1f;
 
     private Vector3 moveInputDirection;
     private Vector3 v_current;
@@ -28,14 +29,19 @@ public class ControlCubeController : MonoBehaviour
 
 
     // Start is called before the first frame update
+    //initialize default values, get necessary components
     void Start()
     {
-        //initialize default values, get necessary components
         moveInputDirection = Vector3.zero;
 
         rb = GetComponent<Rigidbody>();
         rb.freezeRotation = true;
         //rb.interpolation = RigidbodyInterpolation.Interpolate;
+        rb.isKinematic = false;
+
+        //set gravity to __ units/s^2
+        Physics.gravity = new Vector3(0, -20f, 0);
+        rb.useGravity = false;
 
         bCollider = GetComponent<BoxCollider>();
         playerCam = Camera.main;
@@ -43,10 +49,6 @@ public class ControlCubeController : MonoBehaviour
         grounded = false;
         //groundNormal = Vector3.zero;
         jumpPressed = false;
-
-        //set gravity to __ units/s^2
-        Physics.gravity = new Vector3(0, -20f, 0);
-        rb.useGravity = false;
     }
 
     // Update is called once per frame
@@ -61,6 +63,7 @@ public class ControlCubeController : MonoBehaviour
             {
                 jumpPressed = true;
             }
+
         }
         DrawDebugLines();
     }
@@ -68,29 +71,39 @@ public class ControlCubeController : MonoBehaviour
     //Called every time physics updates
     private void FixedUpdate()
     {
+        v_current = rb.velocity;
+
+        bool wasGrounded = grounded;
         grounded = CheckGrounded();
+
+        if (jumpPressed)
+        {
+            Jump();
+            jumpPressed = false;
+            grounded = false;
+        }
+
         if (grounded)
         {
-            v_current.y = 0;
-            Friction();
+            rb.useGravity = false;
+            //rb.isKinematic = true;
+            v_current = Velocity2D();
 
-            if (jumpPressed)
-            {
-                Jump();
-                jumpPressed = false;
-                grounded = false;
-                //Debug.Log("done jumping");
-            }
-            
-            rb.velocity = Vector3.zero;
+            Friction();
             WalkMove();
         }
         else
         {
+            if (wasGrounded)
+            {
+                
+            }
+            //rb.isKinematic = false;
+            rb.useGravity = true;
             AirMove();
         }
         //Debug.Log("grounded: " + grounded);
-        //Debug.Log("v: " + v_current + "   grd?: " + grounded);
+        Debug.Log("v: " + rb.velocity + "   grd?: " + grounded);
         //grounded = false;
     }
 
@@ -101,80 +114,62 @@ public class ControlCubeController : MonoBehaviour
         RaycastHit hit;
         RaycastHit hit2;
 
+        bool wasGrounded = grounded;
+
         //casts a box downward to detect ground, then raycasts down to double-check/work around bugs
         if (Physics.BoxCast(rb.position, boxCastExtents, Vector3.down, out hit, Quaternion.identity, bCollider.bounds.extents.y) &&
             hit.collider.Raycast(new Ray(hit.point + Vector3.up, Vector3.down), out hit2, 1 + groundedDistance))
         {
+            //Debug.DrawRay(hit2.point, hit2.normal * 3, Color.red);
+
+            if (hit2.point.y - groundedDistance > BottomOfPlayerY())
+            {
+                Debug.Log("contact point too high. Contact.y: " + hit2.point.y + ", playerbottom.y: " + BottomOfPlayerY());
+                return false;
+            }
+
             if (hit2.normal.y >= walkOnSlopeNormal)
             {
+                //if moving up at an angle too steep to be walking up a ramp/the ground
+                if (!wasGrounded && MovingUpRelativeToPlane(hit2.normal, rb.velocity))
+                {
+                    Debug.Log("moving up relative to plane");
+                    return false;
+                }
+
                 return true;
             }
             else
             {
+                Debug.Log("slope too steep");
                 return false;
             }
         }
 
-        //Debug.Log("boxcast miss");
+        Debug.Log("boxcast miss");
         return false;
     }
 
-    /*
-    //checks if player is on a walkeable surface
-    private bool CheckNormalGrounded(Vector3 normal, Vector3 position)
+    //moving 
+    private bool MovingUpRelativeToPlane(Vector3 normal, Vector3 velocity)
     {
-        
-        if (normal == Vector3.up) //if on flat surface
+        if (rb.velocity.y < 0)
         {
-            //checks if contact point is near feet of player
-            if (position.y - 0.01f <= BottomOfPlayerY())
-            {
-                return true;
-            }
-            else
-            {
-                Debug.Log("position: " + position + ", bottom of player: " + BottomOfPlayerY());
-            }
+            return false;
         }
-        else
-        {
-            float angle = GetRampAngleFromNormal(normal); //if on a ramp and ramp angle not too steep
-            if (angle >= 0 && angle <= walkUpRampAngle)
-            {
-                return true;
-            }
-        }
-        return false;
-    }
 
-    
-    private void OnCollisionEnter(Collision collision)
-    {
-        ContactPoint cp = collision.GetContact(0);
-        grounded = CheckNormalGrounded(cp.normal, cp.point);
-        if (grounded)
-        {
-            Debug.DrawRay(cp.point, cp.normal * 5, Color.yellow);
-        }
-        else
-        {
-            Debug.DrawRay(cp.point, cp.normal * 5, Color.red);
-        }
-    }
+        Vector3 planeProjection = Vector3.ProjectOnPlane(velocity, normal);
 
-    private void OnCollisionStay(Collision collision)
-    {
-        ContactPoint cp = collision.GetContact(0);
-        grounded = CheckNormalGrounded(cp.normal, cp.point);
-        if (grounded)
+        //Debug.DrawRay(rb.position + Vector3.down * 0.2f, planeProjection, Color.black);
+
+        float angleDiff = Vector3.Angle(planeProjection, velocity);
+        if (angleDiff < 1)
         {
-            Debug.DrawRay(cp.point, cp.normal * 5, Color.yellow);
-        } else
-        {
-            Debug.DrawRay(cp.point, cp.normal * 5, Color.red);
+            return false;
         }
+        //Debug.Log("angleDiff: " + angleDiff);
+        return true;
     }
-    */
 
     private LayerMask MaskFromIntArray(int[] intArray)
     {
@@ -185,7 +180,7 @@ public class ControlCubeController : MonoBehaviour
         }
         return mask;
     }
-    
+
 
     //movement when grounded
     private void WalkMove()
@@ -198,10 +193,52 @@ public class ControlCubeController : MonoBehaviour
             v_desired = Vector3.ClampMagnitude(v_desired, maxRunSpeed);
         }
 
-        //make movement direction parallel to surface player is standing on
-        //v_desired = Vector3.ProjectOnPlane(v_desired, groundNormal).normalized * v_desired.magnitude;
-        
-        //Move(v_desired);
+        rb.velocity = v_desired;
+    }
+
+    private float TryMovingUpStair(Vector3 pos, Vector3 direction, float distance, float boxcastoffset)
+    {
+        pos = pos + Vector3.up * (stepSize + 0.001f);
+        Vector3 start = pos - direction * boxcastoffset;
+        Vector3 movement = direction * (distance + boxcastoffset);
+        RaycastHit? hitInfo = TracePlayerBBox(start, movement);
+        if (!hitInfo.HasValue)
+        {
+            return distance;
+        }
+        else
+        {
+            RaycastHit hit = hitInfo.Value;
+            float moveDistance = hit.distance - boxcastoffset;
+            return moveDistance;
+        }
+    }
+
+
+    private bool SurfaceIsStandeable(Vector3 normal)
+    {
+        if (normal.y >= walkOnSlopeNormal)
+        {
+            return true;
+        }
+        return false;
+    }
+
+    private Vector3 StayOnGround(Vector3 newPos)
+    {
+        float upOffset = 0.01f;
+        Vector3 start = newPos + Vector3.up * upOffset;
+        Vector3 movement = Vector3.down * (stepSize + upOffset);
+
+        RaycastHit? hitInfo = TracePlayerBBox(start, movement);
+
+        if (hitInfo.HasValue)
+        {
+            RaycastHit hit = hitInfo.Value;
+            Debug.Log("start: " + newPos + ", hitpoint: " + hit.point);
+            return start + Vector3.down * hit.distance;
+        }
+        return newPos;
     }
 
     //applies friction to current velocity
@@ -218,8 +255,8 @@ public class ControlCubeController : MonoBehaviour
     //movement when in the air
     private void AirMove()
     {
-        Vector3 acceleration = moveInputDirection * airAcceleration + Physics.gravity;
-        Vector3 v_desired = v_current + acceleration * Time.fixedDeltaTime;
+        Vector3 acceleration = moveInputDirection * airAcceleration;
+        Vector3 v_desired = rb.velocity + acceleration * Time.fixedDeltaTime;
         Vector3 v_desired_xz = new Vector3(v_desired.x, 0, v_desired.z);
 
         if (v_desired_xz.magnitude > maxAirSpeed)
@@ -234,55 +271,19 @@ public class ControlCubeController : MonoBehaviour
         v_desired.x = v_desired_xz.x;
         v_desired.z = v_desired_xz.z;
 
-        Move(v_desired);
-    }
+        rb.velocity = v_desired;
 
-    //applies velocity changes given current and desired velocity
-    private void Move(Vector3 v_desired)
-    {
-        RaycastHit? hitInfo = TracePlayerBBox(rb.position, v_desired * Time.fixedDeltaTime);
-
-        if (!hitInfo.HasValue)
-        {
-            Vector3 newPosition = rb.position + v_desired * Time.fixedDeltaTime;
-            //Debug.Log("moving from: " + rb.position + " to: " + newPosition);
-            
-            //rb.MovePosition(rb.position + v_desired);
-            rb.position = newPosition;
-
-            v_current = v_desired;
-        }
-        else
-        {
-            RaycastHit hit = hitInfo.Value;
-
-            Debug.DrawRay(rb.position, hit.normal * 2f, Color.grey);
-
-            float distance = hit.distance;
-            Vector3 direction = v_desired.normalized;
-            Vector3 newPosition = rb.position + direction * distance;
-
-            Debug.Log("moving distance: " + distance);
-
-            //rb.MovePosition(rb.position + direction * distance);
-            rb.position = newPosition;
-
-            v_current = v_desired;
-        }
+        //Move(v_desired);
     }
 
     //player jumps
     private void Jump()
     {
         Debug.Log("jumping");
-        //make current movement parallel to xz plane
-        //Vector3 v_current_parallel = Vector3.ProjectOnPlane(v_current, Vector3.up).normalized * v_current.magnitude;
-
-        float jump_velocity = Mathf.Sqrt(-2.1f * Physics.gravity.y * jumpHeight); // - Mathf.Clamp(rb.velocity.y, 0, 3f); //calculates velocity change needed to reach a designated jump height
-        //Vector3 v_desired = v_current_parallel + Vector3.up * jump_v_change;
-        v_current.y += jump_velocity;
+        float jump_velocity = Mathf.Sqrt(-2.1f * Physics.gravity.y * jumpHeight); //calculates velocity change needed to reach a designated jump height
+        rb.velocity = new Vector3(rb.velocity.x, jump_velocity, rb.velocity.z);
     }
-    
+
     private void UpdateMovementInput()
     {
         Vector3 axisInput = new Vector3(Input.GetAxisRaw("Horizontal"), 0, Input.GetAxisRaw("Vertical"));
@@ -300,25 +301,24 @@ public class ControlCubeController : MonoBehaviour
     //returns velocity along the xz plane
     public Vector3 Velocity2D()
     {
-        return new Vector3(rb.velocity.x, 0, rb.velocity.z);
+        return new Vector3(v_current.x, 0, v_current.z);
     }
-    
-    private RaycastHit? TracePlayerBBox(Vector3 boxCenter, Vector3 velocity)
+
+    private RaycastHit? TracePlayerBBox(Vector3 boxCenter, Vector3 movement)
     {
         //Debug.Log(velocity);
 
+        Vector3 direction = movement.normalized;
+        float maxDistance = movement.magnitude;
+
         Vector3 boxCastExtents = bCollider.bounds.extents;
-        
-        Vector3 direction = velocity.normalized;
-        float maxDistance = velocity.magnitude;
 
         Vector3 boxBottomCenter = boxCenter + new Vector3(0, -boxCastExtents.y, 0);
 
         //Debug.Log("transform position: " + transform.position + ", rb position: " + rb.position);
-        Debug.DrawRay(rb.position, Vector3.forward * 4, Color.cyan);
-        Debug.DrawRay(boxBottomCenter, direction * maxDistance);
+        //Debug.DrawRay(rb.position, Vector3.forward * 4, Color.cyan);
+        //Debug.DrawRay(boxBottomCenter, direction * maxDistance);
 
-        //casts a box downward to detect ground, then raycasts down to double-check/work around bugs
         if (Physics.BoxCast(boxCenter, boxCastExtents, direction, out RaycastHit hit, Quaternion.identity, maxDistance))
         {
             //Debug.Log("boxcast hit at " + hit.point);
