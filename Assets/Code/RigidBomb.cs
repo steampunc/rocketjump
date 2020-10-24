@@ -73,6 +73,17 @@ public class RigidBomb : MonoBehaviour
         foreach (Collider hit in colliders) {
             Rigidbody rb = hit.GetComponent<Rigidbody>();
             if (rb != null && rb.gameObject != gameObject) {
+
+                if (rb.gameObject.tag == "Player")
+                {
+                    Debug.Log(rb.gameObject.name);
+                    rb.isKinematic = false;
+                }
+                else
+                {
+
+                }
+
                 Vector3 explosionForce = CalculateExplosion(transform.position, rb.position);
                 rb.AddForce(explosionForce, ForceMode.VelocityChange);
                 Debug.DrawRay(rb.position, (explosionForce + rb.velocity) * 0.5f, Color.white, 1f);

@@ -29,6 +29,7 @@ public class SetPositionController : MonoBehaviour
     private bool grounded;
 
     private bool jumpPressed;
+    private bool hitByExplosion;
 
 
     // Start is called before the first frame update
@@ -39,7 +40,7 @@ public class SetPositionController : MonoBehaviour
 
         rb = GetComponent<Rigidbody>();
         rb.freezeRotation = true;
-        //rb.interpolation = RigidbodyInterpolation.Interpolate;
+        rb.interpolation = RigidbodyInterpolation.Interpolate;
         rb.isKinematic = false;
 
         //set gravity to __ units/s^2
@@ -53,6 +54,7 @@ public class SetPositionController : MonoBehaviour
         grounded = false;
         //groundNormal = Vector3.zero;
         jumpPressed = false;
+        hitByExplosion = false;
     }
 
     // Update is called once per frame
@@ -105,7 +107,9 @@ public class SetPositionController : MonoBehaviour
             }
             rb.velocity = Vector3.zero;
             rb.useGravity = false;
-            //rb.isKinematic = true;
+
+            rb.isKinematic = true; ////
+
             v_current.y = 0;
 
             Friction();
@@ -116,16 +120,18 @@ public class SetPositionController : MonoBehaviour
         {
             if (wasGrounded)
             {
-                rb.velocity = rb.velocity + v_current;
+                //rb.velocity = rb.velocity + v_current;
             }
-            //rb.isKinematic = false;
+
+            rb.isKinematic = false; ////
+
             rb.useGravity = true;
             v_current = Vector3.zero;
             
             AirMove();
-            Debug.Log("v: " + rb.velocity);
+            Debug.Log("air v: " + rb.velocity);
         }
-        Debug.Log("grounded: " + grounded);
+        //Debug.Log("grounded: " + grounded);
         //Debug.Log("v: " + v_current + "   grd?: " + grounded);
         //grounded = false;
     }
@@ -309,9 +315,10 @@ public class SetPositionController : MonoBehaviour
         //Debug.Log("desired: " + (v_desired * Time.fixedDeltaTime).magnitude);
         
         Vector3 finalPos = StayOnGround(newPos);
-        Debug.Log("intial.y: " + rb.position.y + ", before stayonground: " + newPos.y + ", final pos.y: " + finalPos.y);
+        //Debug.Log("intial.y: " + rb.position.y + ", before stayonground: " + newPos.y + ", final pos.y: " + finalPos.y);
 
-        rb.position = finalPos;
+        //rb.position = finalPos;
+        rb.MovePosition(finalPos);
         v_current = v_desired;
     }
 
@@ -347,16 +354,25 @@ public class SetPositionController : MonoBehaviour
     {
         float upOffset = 0.01f;
         Vector3 start = newPos + Vector3.up * upOffset;
-        Vector3 movement = Vector3.down * (stepSize + upOffset);
+        Vector3 movement = Vector3.down * (stepSize + upOffset + 0.001f);
 
         RaycastHit? hitInfo = TracePlayerBBox(start, movement);
 
         if (hitInfo.HasValue)
         {
             RaycastHit hit = hitInfo.Value;
-            Debug.Log("start: " + newPos + ", hitpoint: " + hit.point);
-            return start + Vector3.down * hit.distance;
+
+            if (!FastApproximately(hit.distance, upOffset, 0.0001f))
+            {
+                Debug.Log("snapped distance " + hit.distance);
+                return start + Vector3.down * hit.distance;
+            }
         }
+        else
+        {
+            Debug.Log("stayonground miss");
+        }
+        
         return newPos;
     }
 
@@ -407,7 +423,7 @@ public class SetPositionController : MonoBehaviour
     private void DrawDebugLines()
     {
         Debug.DrawRay(transform.position, rb.velocity, Color.green); //draw velocity vector
-        Debug.DrawRay(transform.position, moveInputDirection * 10, Color.blue); //draw moveInput vector
+        //Debug.DrawRay(transform.position, moveInputDirection * 10, Color.blue); //draw moveInput vector
         //Debug.DrawRay(transform.position, friction * 5, Color.red); //draw friction vector
     }
 
@@ -455,5 +471,15 @@ public class SetPositionController : MonoBehaviour
         float angle = 90 - Vector3.Angle(planeProjection, normal);
         //Debug.Log("standing on ramp with angle: " + angle);
         return angle;
+    }
+
+    public static bool FastApproximately(float a, float b, float threshold)
+    {
+        return ((a - b) < 0 ? ((a - b) * -1) : (a - b)) <= threshold;
+    }
+
+    public void HitByExplosion()
+    {
+        hitByExplosion = true;
     }
 }

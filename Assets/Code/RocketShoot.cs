@@ -22,11 +22,13 @@ public class RocketShoot : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        //Debug.Log(currentCooldown);
         if (currentCooldown > 0)
         {
             currentCooldown -= Time.deltaTime;
         }
         if (Input.GetMouseButton(0) && currentCooldown <= 0) {
+            
             GameObject newBomb = Instantiate(bombPrefab, playerCam.transform.position + Vector3.down * 0.3f + playerCam.transform.forward * 0.8f, playerCam.transform.rotation);
             Physics.IgnoreCollision(newBomb.GetComponent<Collider>(), GetComponent<Collider>());
             /*
@@ -42,6 +44,7 @@ public class RocketShoot : MonoBehaviour
 
             audioSource.Play();
             currentCooldown = shootCooldown;
+            Debug.Log(currentCooldown);
         }
     }
     
