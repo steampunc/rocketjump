@@ -2,11 +2,10 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class RigidBomb : MonoBehaviour
+public class RigidRocketSetPosition : MonoBehaviour
 {
     public float explosionStrength = 16f;
     public float explosionRadius = 4f;
-    public float upStrength = 4f;
     public float fuse_time = 4.0f; // seconds
     public float rocketSpeed = 21f;
 
@@ -17,8 +16,6 @@ public class RigidBomb : MonoBehaviour
     private AudioSource audioSource;
 
     private bool exploding;
-
-    //private bool willExplode = false;
 
     // Start is called before the first frame update
     void Start()
@@ -36,7 +33,6 @@ public class RigidBomb : MonoBehaviour
         if (fuse_time > 0)
         {
             fuse_time -= Time.fixedDeltaTime;
-            //Debug.Log(fuse_time);
         }
 
         if (fuse_time <= 0)
@@ -58,17 +54,28 @@ public class RigidBomb : MonoBehaviour
         }
     }
 
-    void Explode() {
+    void Explode()
+    {
         //made explosion particles separate from bomb object
         Instantiate(explosionParticle, transform.position, transform.rotation);
         Instantiate(explosionSound, transform.position, transform.rotation);
-        
+
         Collider[] colliders = Physics.OverlapSphere(transform.position, explosionRadius);
-        foreach (Collider hit in colliders) {
+        foreach (Collider hit in colliders)
+        {
             Rigidbody rb = hit.GetComponent<Rigidbody>();
-            if (rb != null && rb.gameObject != gameObject) {
+            if (rb != null && rb.gameObject != gameObject)
+            {
                 Vector3 explosionForce = CalculateExplosion(transform.position, rb.position);
-                rb.AddForce(explosionForce, ForceMode.VelocityChange);
+                if (rb.tag == "Player")
+                {
+                    //Debug.Log("force added");
+                    rb.gameObject.GetComponent<SetPositionController>().HitByExplosion(explosionForce);
+                }
+                else
+                {
+                    rb.AddForce(explosionForce, ForceMode.VelocityChange);
+                }
                 Debug.DrawRay(rb.position, (explosionForce + rb.velocity) * 0.5f, Color.white, 1f);
             }
         }
@@ -88,13 +95,13 @@ public class RigidBomb : MonoBehaviour
         }
     }
 
-    Vector3 CalculateExplosion(Vector3 origin, Vector3 target) {
-        Vector3 displacement = (target - origin);
-        Vector3 dir = (displacement).normalized;
-        float strength = Mathf.Abs(explosionStrength * Mathf.Cos(displacement.magnitude/explosionRadius * Mathf.PI / 2));
+    Vector3 CalculateExplosion(Vector3 origin, Vector3 target)
+    {
+        Vector3 displacement = target - origin;
+        Vector3 dir = displacement.normalized;
+        //float strength = Mathf.Abs(explosionStrength * Mathf.Cos(displacement.magnitude / explosionRadius * Mathf.PI / 2));
+        float strength = explosionStrength * (explosionRadius - displacement.magnitude) / explosionRadius;
         //float strength = explosionStrength;
-
-        //return dir * strength + Vector3.up * upStrength;
-        return strength * (dir + Vector3.up * upStrength);
+        return strength * dir;
     }
 }

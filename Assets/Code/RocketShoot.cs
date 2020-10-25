@@ -29,7 +29,7 @@ public class RocketShoot : MonoBehaviour
         }
         if (Input.GetMouseButton(0) && currentCooldown <= 0) {
             
-            GameObject newBomb = Instantiate(bombPrefab, playerCam.transform.position + Vector3.down * 0.3f + playerCam.transform.forward * 0.8f, playerCam.transform.rotation);
+            GameObject newBomb = Instantiate(bombPrefab, playerCam.transform.position + Vector3.down * 0.1f + playerCam.transform.forward * 0.8f, playerCam.transform.rotation);
             Physics.IgnoreCollision(newBomb.GetComponent<Collider>(), GetComponent<Collider>());
             /*
             RaycastHit hit;
@@ -44,7 +44,7 @@ public class RocketShoot : MonoBehaviour
 
             audioSource.Play();
             currentCooldown = shootCooldown;
-            Debug.Log(currentCooldown);
+            //Debug.Log(currentCooldown);
         }
     }
     

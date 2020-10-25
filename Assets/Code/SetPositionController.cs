@@ -10,11 +10,11 @@ public class SetPositionController : MonoBehaviour
     private const float maxAirSpeed = 3f;
     private const float groundFriction = 10f;
     private const float stopspeed = 0.1f; //if moving on ground and v < stopspeed, velocity becomes 0
-    private const float jumpHeight = 1.1f;
+    private const float jumpHeight = 1.2f;
     private const float walkOnSlopeNormal = 0.7f; //if y-value of surface normal >= 0.7f player can walk on it
     private const float comeOffGroundSpeed = 4f; //vertical speed needed to become airborne
-    private const float groundedDistance = 0.01f; //if distance to ground < groundedDistance, player considered grounded
-    private const float stepSize = 0.1f;
+    private const float groundedDistance = 0.011f; //if distance to ground < groundedDistance, player considered grounded
+    private const float stepSize = 0.11f;
 
     private const float lookSpeed = 2f; //view sensitivity
     private Vector2 lookRotation;
@@ -44,7 +44,7 @@ public class SetPositionController : MonoBehaviour
         rb.isKinematic = false;
 
         //set gravity to __ units/s^2
-        Physics.gravity = new Vector3(0, -20f, 0);
+        Physics.gravity = new Vector3(0, -15f, 0);
         rb.useGravity = false;
         
 
@@ -52,7 +52,6 @@ public class SetPositionController : MonoBehaviour
         playerCam = Camera.main;
 
         grounded = false;
-        //groundNormal = Vector3.zero;
         jumpPressed = false;
         hitByExplosion = false;
     }
@@ -70,7 +69,6 @@ public class SetPositionController : MonoBehaviour
             {
                 jumpPressed = true;
             }
-            
         }
 
         //clicking on screen locks mouse to center, esc stops
@@ -89,15 +87,26 @@ public class SetPositionController : MonoBehaviour
     //Called every time physics updates
     private void FixedUpdate()
     {
-        bool wasGrounded = grounded;
-        grounded = CheckGrounded();
-
         if (jumpPressed)
         {
             Jump();
             jumpPressed = false;
             grounded = false;
         }
+
+        if (hitByExplosion)
+        {
+            hitByExplosion = false;
+            grounded = false;
+            rb.isKinematic = false;
+            rb.useGravity = true;
+            v_current = Vector3.zero;
+            return;
+        }
+
+        bool wasGrounded = grounded;
+        grounded = CheckGrounded();
+        //Debug.Log("grounded: " + grounded);
         
         if (grounded)
         {
@@ -105,7 +114,7 @@ public class SetPositionController : MonoBehaviour
             {
                 v_current = rb.velocity;
             }
-            rb.velocity = Vector3.zero;
+            //rb.velocity = Vector3.zero;
             rb.useGravity = false;
 
             rb.isKinematic = true; ////
@@ -121,6 +130,7 @@ public class SetPositionController : MonoBehaviour
             if (wasGrounded)
             {
                 //rb.velocity = rb.velocity + v_current;
+                //rb.velocity updates by itself
             }
 
             rb.isKinematic = false; ////
@@ -129,10 +139,9 @@ public class SetPositionController : MonoBehaviour
             v_current = Vector3.zero;
             
             AirMove();
-            Debug.Log("air v: " + rb.velocity);
         }
-        //Debug.Log("grounded: " + grounded);
-        //Debug.Log("v: " + v_current + "   grd?: " + grounded);
+        //Debug.Log("rb.velocity: " + rb.velocity + " magnitude: " + rb.velocity.magnitude);
+        //Debug.Log("v_current: " + v_current + " magnitude: " + v_current.magnitude);
         //grounded = false;
     }
 
@@ -149,8 +158,6 @@ public class SetPositionController : MonoBehaviour
         if (Physics.BoxCast(rb.position, boxCastExtents, Vector3.down, out hit, Quaternion.identity, bCollider.bounds.extents.y) &&
             hit.collider.Raycast(new Ray(hit.point + Vector3.up, Vector3.down), out hit2, 1 + groundedDistance))
         {
-            
-            
             if (hit2.point.y - groundedDistance > BottomOfPlayerY())
             {
                 //Debug.Log("contact point too high. Contact.y: " + hit2.point.y + ", playerbottom.y: " + BottomOfPlayerY());
@@ -165,7 +172,7 @@ public class SetPositionController : MonoBehaviour
                     //Debug.Log("moving up relative to plane");
                     return false;
                 }
-                Debug.DrawRay(hit2.point, hit2.normal * 3, Color.red);
+                //Debug.DrawRay(hit2.point, hit2.normal * 3, Color.red);
                 return true;
             }
             else
@@ -174,7 +181,6 @@ public class SetPositionController : MonoBehaviour
                 return false;
             }
         }
-
         //Debug.Log("boxcast miss");
         return false;
     }
@@ -207,14 +213,19 @@ public class SetPositionController : MonoBehaviour
         axisInput = Quaternion.Euler(0, degreeRotation, 0) * axisInput;
 
         moveInputDirection = axisInput;
+        //moveInputDirection = Vector3.forward; //test
     }
 
     //moving 
     private bool MovingUpRelativeToPlane(Vector3 normal, Vector3 velocity)
     {
-        if (rb.velocity.y < 0)
+        if (velocity.y < 0)
         {
             return false;
+        }
+        else if (velocity.normalized == normal)
+        {
+            return true;
         }
 
         Vector3 planeProjection = Vector3.ProjectOnPlane(velocity, normal);
@@ -255,34 +266,35 @@ public class SetPositionController : MonoBehaviour
         Vector3 newPos = rb.position;
         float boxcastoffset = 0.01f;
 
-        Vector3 direction = v_desired.normalized;
+        Vector3 initial_direction = v_desired.normalized;
         float distance = (v_desired * Time.fixedDeltaTime).magnitude;
 
-        while (distance > 0)
+        int numIterations = 0;
+        Vector3 direction = initial_direction;
+        while (distance > 0 && numIterations < 6)
         {
+            numIterations++;
             RaycastHit? hitInfo = TracePlayerBBox(newPos - direction * boxcastoffset, direction * (distance + boxcastoffset));
             if (!hitInfo.HasValue)
             {
-                //Debug.Log("didn't hit anything");
-                newPos = newPos + direction * distance;
+                newPos = newPos + direction * distance; //didn't hit anything, free movement :)
+                Debug.DrawRay(newPos, direction, Color.green);
                 break;
             }
             else //move as far as possible. subtract hit distance from distance. if hit surface is standeable, redirect movement direction. continue loop
             {
                 RaycastHit hit = hitInfo.Value;
-                Debug.DrawRay(hit.point, hit.normal * 4, Color.magenta);
-
                 float moveDistance = hit.distance - boxcastoffset;
-
+                float prevY = newPos.y;
                 newPos = newPos + direction * moveDistance;
                 distance = distance - moveDistance;
-                //Debug.Log("hit. moved distance: " + moveDistance);
-
+                //Debug.Log("hit. moving from y: " + prevY + " to: " + newPos.y);
+                Debug.DrawRay(newPos, direction, Color.cyan);
+                
                 if (SurfaceIsStandeable(hit.normal))
                 {
                     direction = Vector3.ProjectOnPlane(direction, hit.normal).normalized;
                     //Debug.Log("redirect direction to: " + direction);
-                    Debug.DrawRay(hit.point, direction * 4, Color.green);
                     continue;
                 }
                 else
@@ -291,10 +303,10 @@ public class SetPositionController : MonoBehaviour
                     float stairMoveDistance = TryMovingUpStair(newPos, direction, distance, boxcastoffset);
                     if (stairMoveDistance > 0.01f)
                     {
-                        //distance = distance - stairMoveDistance;
-                        Debug.Log("stairmoved: " + stairMoveDistance);
+                        float oldY = newPos.y;
                         newPos = newPos + Vector3.up * stepSize; //+ direction * stairMoveDistance;
-                        continue;
+                        Debug.Log("stairmoved from: " + oldY + " by: " + stepSize);
+                        direction = initial_direction;
                     }
                     else
                     {
@@ -322,9 +334,10 @@ public class SetPositionController : MonoBehaviour
         v_current = v_desired;
     }
 
+    //jumps position up by stepSize, tries moving forward, returns distance moved forward
     private float TryMovingUpStair(Vector3 pos, Vector3 direction, float distance, float boxcastoffset)
     {
-        pos = pos + Vector3.up * (stepSize + 0.001f);
+        pos = pos + Vector3.up * stepSize;
         Vector3 start = pos - direction * boxcastoffset;
         Vector3 movement = direction * (distance + boxcastoffset);
         RaycastHit? hitInfo = TracePlayerBBox(start, movement);
@@ -334,6 +347,7 @@ public class SetPositionController : MonoBehaviour
         }
         else
         {
+            Debug.Log("stair test hit something");
             RaycastHit hit = hitInfo.Value;
             float moveDistance = hit.distance - boxcastoffset;
             return moveDistance;
@@ -347,6 +361,7 @@ public class SetPositionController : MonoBehaviour
         {
             return true;
         }
+        Debug.Log("slope: " + normal.y + " too steep, < " + walkOnSlopeNormal);
         return false;
     }
 
@@ -417,12 +432,20 @@ public class SetPositionController : MonoBehaviour
     {
         Debug.Log("jumping");
         float jump_velocity = Mathf.Sqrt(-2.1f * Physics.gravity.y * jumpHeight); //calculates velocity change needed to reach a designated jump height
-        rb.velocity = new Vector3(rb.velocity.x, jump_velocity, rb.velocity.z);
+        if (hitByExplosion)
+        {
+            rb.velocity = rb.velocity + Vector3.up * jump_velocity;
+        }
+        else
+        {
+            rb.velocity = new Vector3(rb.velocity.x, jump_velocity, rb.velocity.z);
+        }
+        //Debug.Log("jump velocity " + jump_velocity + " actual: " + rb.velocity);
     }
 
     private void DrawDebugLines()
     {
-        Debug.DrawRay(transform.position, rb.velocity, Color.green); //draw velocity vector
+        //Debug.DrawRay(transform.position, rb.velocity, Color.green); //draw velocity vector
         //Debug.DrawRay(transform.position, moveInputDirection * 10, Color.blue); //draw moveInput vector
         //Debug.DrawRay(transform.position, friction * 5, Color.red); //draw friction vector
     }
@@ -435,8 +458,6 @@ public class SetPositionController : MonoBehaviour
     
     private RaycastHit? TracePlayerBBox(Vector3 boxCenter, Vector3 movement)
     {
-        //Debug.Log(velocity);
-
         Vector3 direction = movement.normalized;
         float maxDistance = movement.magnitude;
 
@@ -445,13 +466,20 @@ public class SetPositionController : MonoBehaviour
         Vector3 boxBottomCenter = boxCenter + new Vector3(0, -boxCastExtents.y, 0);
 
         //Debug.Log("transform position: " + transform.position + ", rb position: " + rb.position);
-        //Debug.DrawRay(rb.position, Vector3.forward * 4, Color.cyan);
-        //Debug.DrawRay(boxBottomCenter, direction * maxDistance);
+        
 
-        if (Physics.BoxCast(boxCenter, boxCastExtents, direction, out RaycastHit hit, Quaternion.identity, maxDistance))
+        if (Physics.BoxCast(boxCenter, boxCastExtents, direction, out RaycastHit hit1, Quaternion.identity, maxDistance))
         {
-            //Debug.Log("boxcast hit at " + hit.point);
-            return hit;
+            //Debug.DrawRay(hit1.point, hit1.normal * 3, Color.magenta);
+            //if (hit1.collider.Raycast(new Ray(hit1.point + -direction, direction), out RaycastHit hit2, 2f))
+            //{
+            //    hit1.normal = hit2.normal;
+            //    Debug.DrawRay(hit1.point, hit1.normal * 4, Color.white);
+            //}
+            Debug.DrawRay(hit1.point, hit1.normal * 4, Color.red);
+
+            //Debug.Log("boxcast hit at y: " + hit1.point.y + " of collider: " + hit1.collider.name);
+            return hit1;
         }
 
         //Debug.Log("boxcast miss");
@@ -478,8 +506,22 @@ public class SetPositionController : MonoBehaviour
         return ((a - b) < 0 ? ((a - b) * -1) : (a - b)) <= threshold;
     }
 
-    public void HitByExplosion()
+    public void HitByExplosion(Vector3 explosionV)
     {
         hitByExplosion = true;
+        rb.isKinematic = false;
+
+        Debug.Log("explosion force magnitude: " + explosionV.magnitude);
+        Debug.Log("current v magnitude: " + rb.velocity.magnitude);
+
+        rb.AddForce(explosionV, ForceMode.VelocityChange);
+
+        //float scaleFactor = 0.4f;
+        //Vector3 newV = new Vector3(rb.velocity.x * 1, rb.velocity.y, rb.velocity.z * 1);
+        //if (newV.y < 0)
+        //{
+        //    newV = new Vector3(newV.x, newV.y * scaleFactor, newV.z);
+        //}
+        //rb.velocity = newV;
     }
 }
