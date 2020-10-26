@@ -143,6 +143,11 @@ public class SetPositionController : MonoBehaviour
         //Debug.Log("rb.velocity: " + rb.velocity + " magnitude: " + rb.velocity.magnitude);
         //Debug.Log("v_current: " + v_current + " magnitude: " + v_current.magnitude);
         //grounded = false;
+        if (!PositionIsValid(rb.position))
+        {
+            //Debug.Log("Position invalid!");
+        }
+
     }
 
     //checks if player is on a walkeable surface
@@ -207,13 +212,13 @@ public class SetPositionController : MonoBehaviour
     private void UpdateMovementInput()
     {
         Vector3 axisInput = new Vector3(Input.GetAxisRaw("Horizontal"), 0, Input.GetAxisRaw("Vertical"));
-        axisInput = Vector3.ClampMagnitude(axisInput, 1);
+        axisInput = axisInput.normalized;
 
         float degreeRotation = playerCam.transform.eulerAngles.y - 360;
         axisInput = Quaternion.Euler(0, degreeRotation, 0) * axisInput;
 
         moveInputDirection = axisInput;
-        //moveInputDirection = Vector3.forward; //test
+        //moveInputDirection = new Vector3(3, 0, 1).normalized; //test
     }
 
     //moving 
@@ -250,7 +255,6 @@ public class SetPositionController : MonoBehaviour
         }
         return mask;
     }
-    
 
     //movement when grounded
     private void WalkMove()
@@ -289,7 +293,7 @@ public class SetPositionController : MonoBehaviour
                 newPos = newPos + direction * moveDistance;
                 distance = distance - moveDistance;
                 //Debug.Log("hit. moving from y: " + prevY + " to: " + newPos.y);
-                Debug.DrawRay(newPos, direction, Color.cyan);
+                Debug.DrawRay(hit.point, hit.normal * 3, Color.cyan);
                 
                 if (SurfaceIsStandeable(hit.normal))
                 {
@@ -305,7 +309,8 @@ public class SetPositionController : MonoBehaviour
                     {
                         float oldY = newPos.y;
                         newPos = newPos + Vector3.up * stepSize; //+ direction * stairMoveDistance;
-                        Debug.Log("stairmoved from: " + oldY + " by: " + stepSize);
+                        //Debug.Log("stairmoved from: " + oldY + " by: " + stepSize);
+                        //Debug.Log("able to stairmove forward " + stairMoveDistance / distance + " of the way");
                         direction = initial_direction;
                     }
                     else
@@ -337,23 +342,49 @@ public class SetPositionController : MonoBehaviour
     //jumps position up by stepSize, tries moving forward, returns distance moved forward
     private float TryMovingUpStair(Vector3 pos, Vector3 direction, float distance, float boxcastoffset)
     {
-        pos = pos + Vector3.up * stepSize;
+        RaycastHit? moveUpHitInfo = TracePlayerBBox(pos + Vector3.down * boxcastoffset, Vector3.up * (boxcastoffset + stepSize));
+        if (moveUpHitInfo.HasValue)
+        {
+            RaycastHit hit = moveUpHitInfo.Value;
+            if (FastApproximately(hit.distance, boxcastoffset, 0.0001f))
+            {
+                return 0;
+            }
+            else
+            {
+                pos = pos + Vector3.up * (hit.distance - boxcastoffset);
+            }
+        }
+        else
+        {
+            pos = pos + Vector3.up * stepSize;
+        }
+        
         Vector3 start = pos - direction * boxcastoffset;
         Vector3 movement = direction * (distance + boxcastoffset);
         RaycastHit? hitInfo = TracePlayerBBox(start, movement);
         if (!hitInfo.HasValue)
         {
+            //Debug.Log("stair test didn't hit anything");
             return distance;
         }
         else
         {
-            Debug.Log("stair test hit something");
+            //Debug.Log("stair test hit something");
             RaycastHit hit = hitInfo.Value;
             float moveDistance = hit.distance - boxcastoffset;
             return moveDistance;
         }
     }
 
+    private bool PositionIsValid(Vector3 position)
+    {
+        if (Physics.CheckBox(position, bCollider.bounds.extents, Quaternion.identity, MaskFromIntArray(new int[] { 0 })))
+        {
+            return false;
+        }
+        return true;
+    }
 
     private bool SurfaceIsStandeable(Vector3 normal)
     {
@@ -361,7 +392,7 @@ public class SetPositionController : MonoBehaviour
         {
             return true;
         }
-        Debug.Log("slope: " + normal.y + " too steep, < " + walkOnSlopeNormal);
+        //Debug.Log("slope: " + normal.y + " too steep, < " + walkOnSlopeNormal);
         return false;
     }
 
@@ -466,7 +497,10 @@ public class SetPositionController : MonoBehaviour
         Vector3 boxBottomCenter = boxCenter + new Vector3(0, -boxCastExtents.y, 0);
 
         //Debug.Log("transform position: " + transform.position + ", rb position: " + rb.position);
-        
+        if (Physics.BoxCastAll(boxCenter, boxCastExtents, direction, Quaternion.identity, maxDistance).Length > 1)
+        {
+            Debug.Log("boxcast hit multiple things");
+        }
 
         if (Physics.BoxCast(boxCenter, boxCastExtents, direction, out RaycastHit hit1, Quaternion.identity, maxDistance))
         {
@@ -476,7 +510,7 @@ public class SetPositionController : MonoBehaviour
             //    hit1.normal = hit2.normal;
             //    Debug.DrawRay(hit1.point, hit1.normal * 4, Color.white);
             //}
-            Debug.DrawRay(hit1.point, hit1.normal * 4, Color.red);
+            //Debug.DrawRay(hit1.point, hit1.normal * 4, Color.red);
 
             //Debug.Log("boxcast hit at y: " + hit1.point.y + " of collider: " + hit1.collider.name);
             return hit1;
